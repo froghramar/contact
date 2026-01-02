@@ -36,6 +36,23 @@ function App() {
 
   const isAdmin = user?.email === ADMIN_EMAIL;
 
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        // Even if signOut returns an error (e.g., session_not_found), clear user state in UI
+        console.warn('Logout error (clearing UI state anyway):', error);
+      }
+    } catch (error: any) {
+      // Handle any thrown errors
+      console.warn('Logout error (clearing UI state anyway):', error);
+    } finally {
+      // Always clear user state in UI regardless of API response
+      setUser(null);
+      setSelectedThreadId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-gray-50">
@@ -58,7 +75,7 @@ function App() {
               <>
                 <span className="text-sm text-gray-300 hidden sm:inline">{user.email}</span>
                 <button 
-                  onClick={() => supabase.auth.signOut()} 
+                  onClick={handleLogout} 
                   className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors duration-200"
                 >
                   Logout
@@ -98,7 +115,7 @@ function App() {
           </div>
         ) : (
           <div className="flex flex-col gap-8">
-            <Announcements />
+            <Announcements user={user} />
             {user ? (
               <ChatInterface userId={user.id} />
             ) : (
