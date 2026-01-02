@@ -1,5 +1,4 @@
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- gen_random_uuid() is built into PostgreSQL 13+ and doesn't require an extension
 
 -- Create user_profiles table first (referenced by other tables)
 CREATE TABLE IF NOT EXISTS user_profiles (
@@ -11,7 +10,7 @@ CREATE TABLE IF NOT EXISTS user_profiles (
 
 -- Create threads table (for chat threads)
 CREATE TABLE IF NOT EXISTS threads (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES user_profiles(id) ON DELETE CASCADE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -20,7 +19,7 @@ CREATE TABLE IF NOT EXISTS threads (
 
 -- Create messages table
 CREATE TABLE IF NOT EXISTS messages (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   thread_id UUID NOT NULL REFERENCES threads(id) ON DELETE CASCADE,
   sender_id UUID NOT NULL REFERENCES user_profiles(id) ON DELETE CASCADE,
   content TEXT NOT NULL,
@@ -30,7 +29,7 @@ CREATE TABLE IF NOT EXISTS messages (
 
 -- Create reactions table
 CREATE TABLE IF NOT EXISTS reactions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   message_id UUID NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES user_profiles(id) ON DELETE CASCADE,
   emoji TEXT NOT NULL,
@@ -40,7 +39,7 @@ CREATE TABLE IF NOT EXISTS reactions (
 
 -- Create announcement_threads table
 CREATE TABLE IF NOT EXISTS announcement_threads (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -48,7 +47,7 @@ CREATE TABLE IF NOT EXISTS announcement_threads (
 
 -- Create announcements table
 CREATE TABLE IF NOT EXISTS announcements (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   thread_id UUID NOT NULL REFERENCES announcement_threads(id) ON DELETE CASCADE,
   content TEXT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

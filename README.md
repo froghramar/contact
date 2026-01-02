@@ -61,10 +61,10 @@ A fully functional chat application built with React, TypeScript, and Supabase. 
    npx supabase login
    
    # Link to your project
-   supabase link --project-ref your-project-ref
+   npx supabase link --project-ref your-project-ref
    
    # Run migrations
-   supabase db push
+   npx supabase db push
    ```
    
    Or manually run the SQL in `supabase/migrations/001_initial_schema.sql` in the Supabase SQL Editor.
