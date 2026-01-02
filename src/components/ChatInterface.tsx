@@ -20,12 +20,46 @@ export default function ChatInterface({ userId }: ChatInterfaceProps) {
   }, [userId]);
 
   useEffect(() => {
-    if (threadId) {
-      loadMessages();
-      subscribeToMessages();
-      subscribeToReactions();
-    }
-  }, [threadId]);
+    if (!threadId) return;
+
+    loadMessages();
+    
+    const messagesChannel = supabase
+      .channel(`thread:${threadId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'messages',
+          filter: `thread_id=eq.${threadId}`,
+        },
+        () => {
+          loadMessages();
+        }
+      )
+      .subscribe();
+
+    const reactionsChannel = supabase
+      .channel(`reactions:${threadId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'reactions',
+        },
+        () => {
+          loadMessages();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(messagesChannel);
+      supabase.removeChannel(reactionsChannel);
+    };
+  }, [threadId, userId]);
 
   useEffect(() => {
     scrollToBottom();
@@ -104,52 +138,6 @@ export default function ChatInterface({ userId }: ChatInterfaceProps) {
     }
   };
 
-  const subscribeToMessages = () => {
-    if (!threadId) return;
-
-    const channel = supabase
-      .channel(`thread:${threadId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'messages',
-          filter: `thread_id=eq.${threadId}`,
-        },
-        () => {
-          loadMessages();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  };
-
-  const subscribeToReactions = () => {
-    if (!threadId) return;
-
-    const channel = supabase
-      .channel(`reactions:${threadId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'reactions',
-        },
-        () => {
-          loadMessages();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  };
 
   const handleSendMessage = async (content: string) => {
     if (!threadId || !content.trim()) return;
