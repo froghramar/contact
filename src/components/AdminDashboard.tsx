@@ -13,7 +13,36 @@ export default function AdminDashboard({ onThreadSelect, selectedThreadId }: Adm
 
   useEffect(() => {
     loadThreads();
-    subscribeToThreads();
+    
+    const channel = supabase
+      .channel('admin-threads')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'threads',
+        },
+        () => {
+          loadThreads();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'messages',
+        },
+        () => {
+          loadThreads();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const loadThreads = async () => {
@@ -60,37 +89,6 @@ export default function AdminDashboard({ onThreadSelect, selectedThreadId }: Adm
     setLoading(false);
   };
 
-  const subscribeToThreads = () => {
-    const channel = supabase
-      .channel('admin-threads')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'threads',
-        },
-        () => {
-          loadThreads();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'messages',
-        },
-        () => {
-          loadThreads();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  };
 
   if (loading) {
     return <div className="p-8 text-center text-gray-500">Loading threads...</div>;

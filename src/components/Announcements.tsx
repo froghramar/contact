@@ -37,7 +37,6 @@ export default function Announcements({ isAdmin, user }: AnnouncementsProps) {
 
   useEffect(() => {
     loadAnnouncements();
-    subscribeToAnnouncements();
   }, []);
 
   const loadAnnouncements = async () => {
@@ -75,37 +74,6 @@ export default function Announcements({ isAdmin, user }: AnnouncementsProps) {
     setLoading(false);
   };
 
-  const subscribeToAnnouncements = () => {
-    const channel = supabase
-      .channel('announcements')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'announcements',
-        },
-        () => {
-          loadAnnouncements();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'announcement_threads',
-        },
-        () => {
-          loadAnnouncements();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  };
 
   const handlePostAnnouncement = async () => {
     if (!postingThreadId || !newAnnouncementContent.trim()) return;
