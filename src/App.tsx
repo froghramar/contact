@@ -6,12 +6,14 @@ import ChatInterface from './components/ChatInterface';
 import AdminDashboard from './components/AdminDashboard';
 import AdminChatInterface from './components/AdminChatInterface';
 import Announcements from './components/Announcements';
+import ChatPrompt from './components/ChatPrompt';
 import './App.css';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+  const [showLogin, setShowLogin] = useState(false);
 
   useEffect(() => {
     // Check active session
@@ -25,6 +27,9 @@ function App() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        setShowLogin(false);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -40,7 +45,7 @@ function App() {
     );
   }
 
-  if (!user) {
+  if (showLogin) {
     return <Login />;
   }
 
@@ -49,10 +54,18 @@ function App() {
       <header className="app-header">
         <h1>Contact Chat</h1>
         <div className="header-actions">
-          <span className="user-email">{user.email}</span>
-          <button onClick={() => supabase.auth.signOut()} className="btn-logout">
-            Logout
-          </button>
+          {user ? (
+            <>
+              <span className="user-email">{user.email}</span>
+              <button onClick={() => supabase.auth.signOut()} className="btn-logout">
+                Logout
+              </button>
+            </>
+          ) : (
+            <button onClick={() => setShowLogin(true)} className="btn-login">
+              Login
+            </button>
+          )}
         </div>
       </header>
 
@@ -67,11 +80,11 @@ function App() {
               />
             </div>
             <div className="admin-content">
-              <Announcements isAdmin={true} />
+              <Announcements isAdmin={true} user={user} />
               {selectedThreadId && (
                 <div className="admin-chat-section">
                   <h2>Chat</h2>
-                  <AdminChatInterface threadId={selectedThreadId} userId={user.id} />
+                  <AdminChatInterface threadId={selectedThreadId} userId={user!.id} />
                 </div>
               )}
             </div>
@@ -79,7 +92,11 @@ function App() {
         ) : (
           <div className="user-layout">
             <Announcements />
-            <ChatInterface userId={user.id} />
+            {user ? (
+              <ChatInterface userId={user.id} />
+            ) : (
+              <ChatPrompt onStartChat={() => setShowLogin(true)} />
+            )}
           </div>
         )}
       </main>

@@ -66,19 +66,29 @@ body {
   opacity: 0.9;
 }
 
-.btn-logout {
-  background: #e74c3c;
+.btn-logout,
+.btn-login {
+  background: #667eea;
   color: white;
   border: none;
   padding: 0.5rem 1rem;
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.9rem;
+  font-weight: 600;
   transition: background 0.2s;
+}
+
+.btn-logout {
+  background: #e74c3c;
 }
 
 .btn-logout:hover {
   background: #c0392b;
+}
+
+.btn-login:hover {
+  background: #5568d3;
 }
 
 .app-main {

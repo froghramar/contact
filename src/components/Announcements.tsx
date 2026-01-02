@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -24,9 +25,10 @@ interface AnnouncementThread {
 
 interface AnnouncementsProps {
   isAdmin?: boolean;
+  user?: User | null;
 }
 
-export default function Announcements({ isAdmin }: AnnouncementsProps) {
+export default function Announcements({ isAdmin, user }: AnnouncementsProps) {
   const [threads, setThreads] = useState<AnnouncementThread[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
@@ -139,14 +141,12 @@ export default function Announcements({ isAdmin }: AnnouncementsProps) {
     <div className="announcements-container">
       <div className="announcements-header">
         <h2>Announcements</h2>
-        {isAdmin && (
+        {isAdmin && user && threads.length > 0 && selectedThreadId && (
           <button
             className="btn-new-announcement"
             onClick={() => {
-              if (selectedThreadId) {
-                setPostingThreadId(selectedThreadId);
-                setShowPostForm(true);
-              }
+              setPostingThreadId(selectedThreadId);
+              setShowPostForm(true);
             }}
           >
             New Announcement
