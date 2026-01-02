@@ -10,6 +10,7 @@ jobs:
   deploy-ui:
     name: Deploy UI to GitHub Pages
     runs-on: ubuntu-latest
+    environment: GitHub Pages
     permissions:
       contents: read
       pages: write
