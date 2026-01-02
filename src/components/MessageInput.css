@@ -1,0 +1,61 @@
+.message-input-container {
+  display: flex;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-top: 1px solid #e0e0e0;
+  background: white;
+  border-radius: 0 0 8px 8px;
+}
+
+.message-input {
+  flex: 1;
+  padding: 0.75rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 1rem;
+  resize: none;
+  overflow-y: auto;
+  transition: border-color 0.2s;
+}
+
+.message-input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.message-input::-webkit-scrollbar {
+  width: 8px;
+}
+
+.message-input::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.message-input::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.btn-send {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  align-self: flex-end;
+}
+
+.btn-send:hover:not(:disabled) {
+  background: #5568d3;
+}
+
+.btn-send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+

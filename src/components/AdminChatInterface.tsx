@@ -1,0 +1,138 @@
+import { useEffect, useState, useRef } from 'react';
+import { supabase } from '../lib/supabase';
+import { Message } from '../types/database';
+import MessageList from './MessageList';
+import MessageInput from './MessageInput';
+import './ChatInterface.css';
+
+interface AdminChatInterfaceProps {
+  threadId: string;
+  userId: string;
+}
+
+export default function AdminChatInterface({ threadId, userId }: AdminChatInterfaceProps) {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (threadId) {
+      loadMessages();
+      subscribeToMessages();
+      subscribeToReactions();
+    }
+  }, [threadId]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const loadMessages = async () => {
+    const { data, error } = await supabase
+      .from('messages')
+      .select(`
+        *,
+        sender:user_profiles!messages_sender_id_fkey(email)
+      `)
+      .eq('thread_id', threadId)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Error loading messages:', error);
+      return;
+    }
+
+    const transformedMessages = data.map((msg: any) => ({
+      ...msg,
+      sender: msg.sender ? { email: msg.sender.email } : undefined,
+    }));
+
+    setMessages(transformedMessages);
+
+    // Mark messages as seen
+    const unreadMessages = transformedMessages.filter(
+      (m: Message) => !m.seen_at && m.sender_id !== userId
+    );
+    if (unreadMessages.length > 0) {
+      const now = new Date().toISOString();
+      await supabase
+        .from('messages')
+        .update({ seen_at: now })
+        .in('id', unreadMessages.map((m) => m.id));
+    }
+  };
+
+  const subscribeToMessages = () => {
+    const channel = supabase
+      .channel(`thread:${threadId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'messages',
+          filter: `thread_id=eq.${threadId}`,
+        },
+        () => {
+          loadMessages();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  };
+
+  const subscribeToReactions = () => {
+    const channel = supabase
+      .channel(`reactions:${threadId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'reactions',
+        },
+        () => {
+          loadMessages();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  };
+
+  const handleSendMessage = async (content: string) => {
+    if (!content.trim()) return;
+
+    const { error } = await supabase
+      .from('messages')
+      .insert({
+        thread_id: threadId,
+        sender_id: userId,
+        content: content.trim(),
+      });
+
+    if (error) {
+      console.error('Error sending message:', error);
+      alert('Failed to send message');
+    }
+  };
+
+  return (
+    <div className="chat-interface">
+      <div className="chat-messages-container">
+        <MessageList messages={messages} currentUserId={userId} threadId={threadId} />
+        <div ref={messagesEndRef} />
+      </div>
+      <MessageInput onSend={handleSendMessage} />
+    </div>
+  );
+}
+
