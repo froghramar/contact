@@ -3,7 +3,6 @@ import { supabase } from '../lib/supabase';
 import { Message } from '../types/database';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
-import './ChatInterface.css';
 
 interface ChatInterfaceProps {
   userId: string;
@@ -158,20 +157,20 @@ export default function ChatInterface({ userId }: ChatInterfaceProps) {
 
   if (loading) {
     return (
-      <div className="chat-loading">
-        <div className="spinner"></div>
+      <div className="flex justify-center items-center h-96 bg-white rounded-xl shadow-sm">
+        <div className="w-10 h-10 border-4 border-gray-200 border-t-indigo-600 rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="chat-interface">
-      <div className="chat-header">
-        <h2>Chat</h2>
-        <p className="chat-subtitle">Start a conversation</p>
+    <div className="bg-white rounded-xl shadow-sm flex flex-col h-[600px] max-h-[calc(100vh-200px)]">
+      <div className="px-6 py-4 border-b border-gray-200">
+        <h2 className="text-2xl font-semibold text-slate-800 mb-1">Chat</h2>
+        <p className="text-sm text-gray-500">Start a conversation</p>
       </div>
 
-      <div className="chat-messages-container">
+      <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
         <MessageList messages={messages} currentUserId={userId} threadId={threadId!} />
         <div ref={messagesEndRef} />
       </div>

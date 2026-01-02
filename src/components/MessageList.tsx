@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Message, Reaction } from '../types/database';
 import MessageItem from './MessageItem';
-import './MessageList.css';
 
 interface MessageListProps {
   messages: Message[];
@@ -61,14 +60,14 @@ export default function MessageList({ messages, currentUserId, threadId: _thread
 
   if (messages.length === 0) {
     return (
-      <div className="message-list-empty">
+      <div className="flex justify-center items-center flex-1 text-gray-500 text-base">
         <p>No messages yet. Start the conversation!</p>
       </div>
     );
   }
 
   return (
-    <div className="message-list">
+    <div className="flex flex-col gap-4">
       {messages.map((message) => (
         <MessageItem
           key={message.id}

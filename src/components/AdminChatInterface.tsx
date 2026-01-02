@@ -3,7 +3,6 @@ import { supabase } from '../lib/supabase';
 import { Message } from '../types/database';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
-import './ChatInterface.css';
 
 interface AdminChatInterfaceProps {
   threadId: string;
@@ -118,8 +117,8 @@ export default function AdminChatInterface({ threadId, userId }: AdminChatInterf
   };
 
   return (
-    <div className="chat-interface">
-      <div className="chat-messages-container">
+    <div className="bg-white rounded-xl shadow-sm flex flex-col h-[600px] max-h-[calc(100vh-200px)]">
+      <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
         <MessageList messages={messages} currentUserId={userId} threadId={threadId} />
         <div ref={messagesEndRef} />
       </div>

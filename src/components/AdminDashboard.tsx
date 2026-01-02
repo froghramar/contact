@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { Thread } from '../types/database';
-import './AdminDashboard.css';
 
 interface AdminDashboardProps {
   onThreadSelect?: (threadId: string) => void;
@@ -94,35 +93,41 @@ export default function AdminDashboard({ onThreadSelect, selectedThreadId }: Adm
   };
 
   if (loading) {
-    return <div className="admin-dashboard-loading">Loading threads...</div>;
+    return <div className="p-8 text-center text-gray-500">Loading threads...</div>;
   }
 
   if (threads.length === 0) {
-    return <div className="admin-dashboard-empty">No chat threads yet.</div>;
+    return <div className="p-8 text-center text-gray-500">No chat threads yet.</div>;
   }
 
   return (
-    <div className="admin-dashboard">
-      <div className="threads-list">
+    <div className="flex flex-col">
+      <div className="flex flex-col gap-2">
         {threads.map((thread) => (
           <div
             key={thread.id}
-            className={`thread-item ${selectedThreadId === thread.id ? 'thread-selected' : ''}`}
+            className={`p-4 border rounded-lg cursor-pointer transition-all duration-200 bg-white ${
+              selectedThreadId === thread.id
+                ? 'bg-indigo-50 border-indigo-600'
+                : 'border-gray-200 hover:bg-gray-50 hover:border-indigo-600'
+            }`}
             onClick={() => onThreadSelect?.(thread.id)}
           >
-            <div className="thread-header">
-              <div className="thread-email">{thread.user?.email || 'Unknown User'}</div>
+            <div className="flex justify-between items-center mb-2">
+              <div className="font-semibold text-slate-800 text-sm">{thread.user?.email || 'Unknown User'}</div>
               {thread.unread_count! > 0 && (
-                <span className="thread-unread-badge">{thread.unread_count}</span>
+                <span className="bg-red-600 text-white rounded-full px-2 py-1 text-xs font-semibold min-w-[20px] text-center">
+                  {thread.unread_count}
+                </span>
               )}
             </div>
             {thread.last_message && (
-              <div className="thread-preview">
+              <div className="text-gray-500 text-xs mb-2 truncate">
                 {thread.last_message.content.substring(0, 50)}
                 {thread.last_message.content.length > 50 ? '...' : ''}
               </div>
             )}
-            <div className="thread-time">
+            <div className="text-xs text-gray-400">
               {new Date(thread.updated_at).toLocaleString()}
             </div>
           </div>
