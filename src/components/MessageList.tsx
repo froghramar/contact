@@ -10,7 +10,7 @@ interface MessageListProps {
   threadId: string;
 }
 
-export default function MessageList({ messages, currentUserId, threadId }: MessageListProps) {
+export default function MessageList({ messages, currentUserId, threadId: _threadId }: MessageListProps) {
   const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
 
   useEffect(() => {
