@@ -46,3 +46,11 @@ export interface AnnouncementThread {
   announcements?: Announcement[];
 }
 
+export interface AnnouncementReaction {
+  id: string;
+  announcement_id: string;
+  user_id: string;
+  emoji: string;
+  created_at: string;
+}
+

@@ -5,6 +5,8 @@ import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { formatDistanceToNow } from 'date-fns';
+import EmojiPicker from 'emoji-picker-react';
+import { AnnouncementReaction } from '../types/database';
 
 interface Announcement {
   id: string;
@@ -34,10 +36,18 @@ export default function Announcements({ isAdmin, user }: AnnouncementsProps) {
   const [showPostForm, setShowPostForm] = useState(false);
   const [newAnnouncementContent, setNewAnnouncementContent] = useState('');
   const [postingThreadId, setPostingThreadId] = useState<string | null>(null);
+  const [reactions, setReactions] = useState<Record<string, AnnouncementReaction[]>>({});
+  const [showEmojiPicker, setShowEmojiPicker] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     loadAnnouncements();
   }, []);
+
+  useEffect(() => {
+    if (threads.length > 0) {
+      loadReactions();
+    }
+  }, [threads]);
 
   const loadAnnouncements = async () => {
     const { data: threadsData, error: threadsError } = await supabase
@@ -74,6 +84,102 @@ export default function Announcements({ isAdmin, user }: AnnouncementsProps) {
     setLoading(false);
   };
 
+  const loadReactions = async () => {
+    // Get all announcement IDs from current threads state
+    const announcementIds: string[] = [];
+    threads.forEach((thread) => {
+      thread.announcements?.forEach((announcement) => {
+        announcementIds.push(announcement.id);
+      });
+    });
+
+    if (announcementIds.length === 0) {
+      setReactions({});
+      return;
+    }
+
+    const { data } = await supabase
+      .from('announcement_reactions')
+      .select('*')
+      .in('announcement_id', announcementIds);
+
+    if (data) {
+      const reactionsMap: Record<string, AnnouncementReaction[]> = {};
+      data.forEach((reaction) => {
+        if (!reactionsMap[reaction.announcement_id]) {
+          reactionsMap[reaction.announcement_id] = [];
+        }
+        reactionsMap[reaction.announcement_id].push(reaction);
+      });
+      setReactions(reactionsMap);
+    } else {
+      setReactions({});
+    }
+  };
+
+  const handleReaction = async (announcementId: string, emoji: string) => {
+    if (!user) return;
+
+    // Check if user already reacted with this emoji
+    const existing = reactions[announcementId]?.find(
+      (r) => r.announcement_id === announcementId && r.user_id === user.id && r.emoji === emoji
+    );
+
+    // Optimistically update UI immediately
+    const updatedReactions = { ...reactions };
+    if (!updatedReactions[announcementId]) {
+      updatedReactions[announcementId] = [];
+    }
+
+    if (existing) {
+      // Remove reaction from UI immediately
+      updatedReactions[announcementId] = updatedReactions[announcementId].filter(
+        (r) => r.id !== existing.id
+      );
+      setReactions(updatedReactions);
+
+      // Remove reaction from database
+      await supabase.from('announcement_reactions').delete().eq('id', existing.id);
+    } else {
+      // Add reaction to UI immediately (temporary ID, will be replaced on next load)
+      const tempReaction: AnnouncementReaction = {
+        id: `temp-${Date.now()}`,
+        announcement_id: announcementId,
+        user_id: user.id,
+        emoji,
+        created_at: new Date().toISOString(),
+      };
+      updatedReactions[announcementId] = [...updatedReactions[announcementId], tempReaction];
+      setReactions(updatedReactions);
+
+      // Add reaction to database
+      const { data, error } = await supabase
+        .from('announcement_reactions')
+        .insert({
+          announcement_id: announcementId,
+          user_id: user.id,
+          emoji,
+        })
+        .select()
+        .single();
+
+      // Update with real ID from database if successful
+      if (data && !error) {
+        updatedReactions[announcementId] = updatedReactions[announcementId].map((r) =>
+          r.id === tempReaction.id ? data : r
+        );
+        setReactions(updatedReactions);
+      } else if (error) {
+        // Revert on error
+        updatedReactions[announcementId] = updatedReactions[announcementId].filter(
+          (r) => r.id !== tempReaction.id
+        );
+        setReactions(updatedReactions);
+        console.error('Error adding reaction:', error);
+      }
+    }
+  };
+
 
   const handlePostAnnouncement = async () => {
     if (!postingThreadId || !newAnnouncementContent.trim()) return;
@@ -92,6 +198,9 @@ export default function Announcements({ isAdmin, user }: AnnouncementsProps) {
     setNewAnnouncementContent('');
     setShowPostForm(false);
     setPostingThreadId(null);
+    
+    // Reload announcements to show the new one
+    await loadAnnouncements();
   };
 
   if (loading) {
@@ -156,43 +265,106 @@ export default function Announcements({ isAdmin, user }: AnnouncementsProps) {
                       No announcements in this thread yet.
                     </div>
                   ) : (
-                    selectedThread.announcements?.map((announcement) => (
-                      <div key={announcement.id} className="border border-gray-200 rounded-lg p-6 bg-gray-50">
-                        <div className="flex justify-end mb-4">
-                          <span className="text-sm text-gray-500">
-                            {formatDistanceToNow(new Date(announcement.created_at), {
-                              addSuffix: true,
-                            })}
-                          </span>
-                        </div>
-                        <div className="prose prose-sm max-w-none text-slate-800">
-                          <ReactMarkdown
-                            components={{
-                              code({ className, children, ...props }: any) {
-                                const match = /language-(\w+)/.exec(className || '');
-                                const inline = !match;
-                                return !inline ? (
-                                  <SyntaxHighlighter
-                                    style={vscDarkPlus as any}
-                                    language={match[1]}
-                                    PreTag="div"
-                                    {...props}
+                    selectedThread.announcements?.map((announcement) => {
+                      const announcementReactions = reactions[announcement.id] || [];
+                      const reactionGroups = announcementReactions.reduce((acc, reaction) => {
+                        if (!acc[reaction.emoji]) {
+                          acc[reaction.emoji] = [];
+                        }
+                        acc[reaction.emoji].push(reaction);
+                        return acc;
+                      }, {} as Record<string, AnnouncementReaction[]>);
+
+                      return (
+                        <div key={announcement.id} className="border border-gray-200 rounded-lg p-6 bg-gray-50">
+                          <div className="flex justify-between items-start mb-4">
+                            <div className="relative">
+                              {user && (
+                                <>
+                                  <button
+                                    className="bg-white border border-gray-200 px-2 py-1 rounded text-sm hover:bg-gray-50 transition-colors duration-200"
+                                    onClick={() => {
+                                      setShowEmojiPicker((prev) => ({
+                                        ...prev,
+                                        [announcement.id]: !prev[announcement.id],
+                                      }));
+                                    }}
+                                    title="Add reaction"
                                   >
-                                    {String(children).replace(/\n$/, '')}
-                                  </SyntaxHighlighter>
-                                ) : (
-                                  <code className={`${className} bg-gray-200 px-1.5 py-0.5 rounded text-sm`} {...props}>
-                                    {children}
-                                  </code>
+                                    😊
+                                  </button>
+                                  {showEmojiPicker[announcement.id] && (
+                                    <div className="absolute top-full left-0 mt-2 z-[1000]">
+                                      <EmojiPicker
+                                        onEmojiClick={(emojiObject) => {
+                                          handleReaction(announcement.id, emojiObject.emoji);
+                                          setShowEmojiPicker((prev) => ({
+                                            ...prev,
+                                            [announcement.id]: false,
+                                          }));
+                                        }}
+                                      />
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                            <span className="text-sm text-gray-500">
+                              {formatDistanceToNow(new Date(announcement.created_at), {
+                                addSuffix: true,
+                              })}
+                            </span>
+                          </div>
+                          <div className="prose prose-sm max-w-none text-slate-800">
+                            <ReactMarkdown
+                              components={{
+                                code({ className, children, ...props }: any) {
+                                  const match = /language-(\w+)/.exec(className || '');
+                                  const inline = !match;
+                                  return !inline ? (
+                                    <SyntaxHighlighter
+                                      style={vscDarkPlus as any}
+                                      language={match[1]}
+                                      PreTag="div"
+                                      {...props}
+                                    >
+                                      {String(children).replace(/\n$/, '')}
+                                    </SyntaxHighlighter>
+                                  ) : (
+                                    <code className={`${className} bg-gray-200 px-1.5 py-0.5 rounded text-sm`} {...props}>
+                                      {children}
+                                    </code>
+                                  );
+                                },
+                              }}
+                            >
+                              {announcement.content}
+                            </ReactMarkdown>
+                          </div>
+                          {Object.keys(reactionGroups).length > 0 && (
+                            <div className="flex gap-2 flex-wrap mt-4">
+                              {Object.entries(reactionGroups).map(([emoji, reactionList]) => {
+                                const hasUserReaction = user && reactionList.some((r) => r.user_id === user.id);
+                                return (
+                                  <button
+                                    key={emoji}
+                                    className={`flex items-center gap-1 bg-white border px-2 py-1 rounded-full text-xs transition-all duration-200 hover:bg-gray-50 hover:border-indigo-600 ${
+                                      hasUserReaction ? 'bg-indigo-50 border-indigo-600' : 'border-gray-200'
+                                    } ${!user ? 'cursor-default' : 'cursor-pointer'}`}
+                                    onClick={() => user && handleReaction(announcement.id, emoji)}
+                                    title={`${reactionList.length} reaction${reactionList.length > 1 ? 's' : ''}`}
+                                    disabled={!user}
+                                  >
+                                    <span className="text-base">{emoji}</span>
+                                    <span className="font-semibold text-slate-800">{reactionList.length}</span>
+                                  </button>
                                 );
-                              },
-                            }}
-                          >
-                            {announcement.content}
-                          </ReactMarkdown>
+                              })}
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
 
